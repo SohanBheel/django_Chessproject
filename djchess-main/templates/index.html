@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Chess Game - Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+
+    <h1>Home</h1>
+
+    {% if user.is_authenticated %}
+    
+        {% if messages %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            {% for message in messages %}
+                {{ message }}
+                <br>
+            {% endfor %}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-md-6">
+
+                <div class="container mt-5">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h2 class="text-center">Invite a Player</h2>
+                        </div>
+                    </div>
+                
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="row border-bottom font-weight-bold">
+                                <div class="col-md-6">Username</div>
+                                <div class="col-md-6">Invite</div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <div id="players-list">
+                        <!-- Players will be dynamically updated here -->
+                    </div>
+                    
+
+                    
+                </div>
+
+                {% if active_game %}
+                    <div id="chess-board">
+                        <h4>You are invited to Game with 
+                            {% if active_game.player2.first_name == request.user.first_name %}
+                            {{ active_game.player1.first_name}}
+                            {% else %}
+                            {{ active_game.player2.first_name}}
+                            {% endif %}
+                        </h4>
+                        <div id="chessboard">
+                            <!-- Chessboard rendering goes here -->
+                        </div>
+                    </div>
+                    <form action="{% url 'game_detail' active_game.id %}" method="get">
+                        {% csrf_token %}
+                        <input type="hidden" name="isJoined" value="yes">
+                        <button class="mt-2 btn btn-danger" type="submit">Join The Game</button>
+                    </form>
+
+                    <form action="{% url 'resign_game' active_game.id %}" method="post">
+                        {% csrf_token %}
+                        <button class="mt-2 btn btn-danger" type="submit">Resign Game</button>
+                    </form>
+                {% endif %}
+
+                
+            </div>
+
+            <div class="col-md-6">
+                <div class="container">
+                    <h2 class="mb-4">Game History</h2>
+                    <div class="row">
+                        <div class="col-md-3 fw-bold">Opponent</div>
+                        <div class="col-md-2 fw-bold">Moves</div>
+                        <div class="col-md-3 fw-bold">Result</div>
+                        <div class="col-md-4 fw-bold">Actions</div>
+                    </div>
+                    <hr>
+                    {% for game in past_games %}
+                    <div class="row align-items-center mb-3">
+                        <div class="col-md-3">
+                            {% if game.player1.username == request.user.username %}
+                                {{ game.player2.first_name }}
+                            {% else %}
+                                {{ game.player1.first_name }}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2">{{ game.moves_count }}</div>
+                        <div class="col-md-3">{{ game.result }}</div>
+                        <div class="col-md-4">
+                            <a href="{% url 'edit_game' game.id %}" class="btn btn-info btn-sm me-2">Edit</a>
+                            <a href="{% url 'delete_game' game.id %}" class="btn btn-danger btn-sm">Delete</a>
+                        </div>
+                    </div>
+                    <hr>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        
+        
+        
+        
+
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            <p>You need to <a href="{% url 'login' %}">login</a> to access the dashboard.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Make sure to replace with your actual fetch call URL -->
+<script>
+    function fetchPlayers() {
+        fetch('{% url "get_active_players" %}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest' // Optional but good practice
+            }
+        })
+        .then(response => response.json())  // Parse the JSON response
+        .then(data => {
+            var playersList = '';
+            if (data.players) {
+                data.players.forEach(function(player) {
+                    playersList += `
+                        <div class="col-md-12">
+                            <div class="row border-bottom py-2">
+                                <div class="col-md-6">${player.first_name}</div>
+                                <div class="col-md-6">
+                                    <form action="{% url 'create_game' %}" method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="invite_player" value="${player.id}">
+                                        <button class="btn btn-primary" type="submit">Invite</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+            }
+            document.getElementById('players-list').innerHTML = playersList;
+        })
+        .catch(error => {
+            console.error('Failed to fetch players.', error);
+        });
+    }
+
+    // Poll every second
+    setInterval(fetchPlayers, 1000);
+</script>
+
+
+
+{% endblock %}
